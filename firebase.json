@@ -1,1 +1,40 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"smartkid-insight","appId":"1:830119490238:android:63c8f30d55e59058e8a4ef","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"smartkid-insight","configurations":{"android":"1:830119490238:android:63c8f30d55e59058e8a4ef","web":"1:830119490238:web:af238d02bac027aee8a4ef"}}}}}}
+
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "smartkid-insight",
+          "appId": "1:830119490238:android:63c8f30d55e59058e8a4ef",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "smartkid-insight",
+          "configurations": {
+            "android": "1:830119490238:android:63c8f30d55e59058e8a4ef",
+            "web": "1:830119490238:web:af238d02bac027aee8a4ef"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
