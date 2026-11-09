@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Rules for the SmartKid Insight Firebase project (Flutter app + web prototype).
+// FR4.2 / NFR4.3: a parent sees only the sessions they created; teachers and
+// researchers see all sessions. Roles live in users/{uid}.role.
+//
+// Teacher and researcher roles are assigned by hand in the Firebase console;
+// self-service sign-up can only create a 'parent' account.
+//
+// Deploy with:  firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isStaff() {
+      return signedIn() && (role() == 'teacher' || role() == 'researcher');
+    }
+
+    // A write may omit ownerId (older web prototype data) but may never claim
+    // somebody else's uid.
+    function ownerOk(data) {
+      return !('ownerId' in data) || data.ownerId == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.role == 'parent';
+      allow update, delete: if false;
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isStaff() || (signedIn() && resource.data.ownerId == request.auth.uid);
+      allow create: if signedIn() && ownerOk(request.resource.data);
+      allow update: if signedIn() && (
+        resource.data.ownerId == request.auth.uid || !('ownerId' in resource.data)
+      ) && ownerOk(request.resource.data);
+      allow delete: if false;
+
+      match /responses/{responseId} {
+        allow read: if isStaff() || (signedIn() &&
+          get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerId == request.auth.uid);
+        allow create: if signedIn() && ownerOk(request.resource.data);
+        allow update, delete: if false;
+      }
+    }
+  }
+}

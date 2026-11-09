@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "830119490238",
+    "project_id": "smartkid-insight",
+    "storage_bucket": "smartkid-insight.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:830119490238:android:63c8f30d55e59058e8a4ef",
+        "android_client_info": {
+          "package_name": "lk.ac.sjp.smartkid_insight"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXeNkXkNrCikI3iMcWYEEdxOp4uXBDSqg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
