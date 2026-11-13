@@ -7,6 +7,7 @@ import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/local_store.dart';
 import 'services/tts_service.dart';
+import 'services/sound_effect_service.dart';
 import 'theme.dart';
 import 'screens/activity_menu_screen.dart';
 import 'screens/activity_play_screen.dart';
@@ -42,6 +43,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final FirestoreService _fs = FirestoreService();
   final TtsService _tts = TtsService();
+  final SoundEffectService _sounds = SoundEffectService();
 
   bool _loading = true;
   AppScreen _screen = AppScreen.welcome;
@@ -60,6 +62,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _tts.stop();
+    _sounds.dispose();
     super.dispose();
   }
 
@@ -252,6 +255,7 @@ void _startSession([ChildProfile? child]) {
           child: _child!,
           session: _session!,
           tts: _tts,
+          sounds: _sounds,
           onResponse: (r) {
             _responses.add(r);
             _fs.saveResponse(r);

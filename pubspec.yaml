@@ -14,6 +14,7 @@ dependencies:
   cloud_firestore: ^5.4.4
   flutter_tts: ^4.0.2
   shared_preferences: ^2.3.2
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +23,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/sounds/
 
   fonts:
     - family: NotoSansSinhala
