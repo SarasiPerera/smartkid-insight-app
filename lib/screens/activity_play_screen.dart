@@ -1,7 +1,9 @@
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
 
 import '../data/activity_data.dart';
 import '../models/models.dart';
@@ -35,11 +37,13 @@ class ActivityPlayScreen extends StatefulWidget {
   });
 
   @override
-  State<ActivityPlayScreen> createState() => _ActivityPlayScreenState();
+  State<ActivityPlayScreen> createState() =>
+      _ActivityPlayScreenState();
 }
 
 class _ActivityPlayScreenState extends State<ActivityPlayScreen> {
   late final List<QuestionItem> _questions;
+  late final ConfettiController _confettiController;
 
   int _index = 0;
   String? _selectedId;
@@ -54,6 +58,10 @@ class _ActivityPlayScreenState extends State<ActivityPlayScreen> {
   @override
   void initState() {
     super.initState();
+
+    _confettiController = ConfettiController(
+      duration: const Duration(milliseconds: 1500),
+    );
 
     _questions = getQuestionsForActivityAndAge(
       widget.activityType,
@@ -71,8 +79,48 @@ class _ActivityPlayScreenState extends State<ActivityPlayScreen> {
 
   @override
   void dispose() {
+    _confettiController.dispose();
     widget.tts.stop();
     super.dispose();
+  }
+
+  /// Creates star-shaped particles for the celebration.
+  Path _drawStar(Size size) {
+    const points = 5;
+
+    final center = Offset(
+      size.width / 2,
+      size.height / 2,
+    );
+
+    final outerRadius =
+        math.min(size.width, size.height) / 2;
+
+    final innerRadius = outerRadius * 0.42;
+
+    final path = Path();
+
+    for (var i = 0; i < points * 2; i++) {
+      final radius =
+          i.isEven ? outerRadius : innerRadius;
+
+      final angle =
+          -math.pi / 2 + i * math.pi / points;
+
+      final point = Offset(
+        center.dx + radius * math.cos(angle),
+        center.dy + radius * math.sin(angle),
+      );
+
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+
+    path.close();
+    return path;
   }
 
   void _speakPrompt() {
@@ -102,7 +150,8 @@ class _ActivityPlayScreenState extends State<ActivityPlayScreen> {
   void _tap(ChoiceOption choice) {
     if (_feedback != TileFeedback.none) return;
 
-    final rt = DateTime.now().difference(_shownAt).inMilliseconds;
+    final rt =
+        DateTime.now().difference(_shownAt).inMilliseconds;
 
     widget.onResponse(
       AssessmentResponse(
@@ -131,9 +180,10 @@ class _ActivityPlayScreenState extends State<ActivityPlayScreen> {
           : OwlEmotion.encouraging;
     });
 
-    // Play the matching sound without delaying answer feedback.
+    // Play the matching sound and celebrate correct answers.
     if (choice.isCorrect) {
       unawaited(widget.sounds.playCorrect());
+      _confettiController.play();
     } else {
       unawaited(widget.sounds.playIncorrect());
     }
@@ -169,216 +219,261 @@ class _ActivityPlayScreenState extends State<ActivityPlayScreen> {
     final n = _q.choices.length;
     final cols = n == 3 ? 3 : 2;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Responsive header: prevents horizontal overflow on mobile.
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 420;
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Responsive header: prevents horizontal overflow on mobile.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact =
+                      constraints.maxWidth < 420;
 
-              final exitButton = TextButton.icon(
-                onPressed: widget.onBack,
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Exit'),
-              );
-
-              final title = Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    info.titleSinhala,
-                    textAlign: TextAlign.center,
-                    style: sinhalaText(
-                      15,
-                      weight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    'Question ${_index + 1} of ${_questions.length}',
-                    style: sinhalaText(
-                      11.5,
-                      color: AppColors.inkSoft,
-                    ),
-                  ),
-                ],
-              );
-
-              final speakerButton =
-                  ValueListenableBuilder<bool>(
-                valueListenable: widget.tts.speaking,
-                builder: (context, speaking, _) {
-                  return IconButton.filled(
-                    onPressed: _speakPrompt,
-                    tooltip: 'Read aloud',
-                    style: IconButton.styleFrom(
-                      backgroundColor: speaking
-                          ? AppColors.primary
-                          : AppColors.primarySoft,
-                      foregroundColor: speaking
-                          ? Colors.white
-                          : AppColors.primary,
-                      minimumSize: const Size(48, 48),
-                    ),
-                    icon: const Icon(
-                      Icons.volume_up,
-                      size: 26,
-                    ),
+                  final exitButton = TextButton.icon(
+                    onPressed: widget.onBack,
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Exit'),
                   );
-                },
-              );
 
-              if (isCompact) {
-                return Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                  final title = Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        info.titleSinhala,
+                        textAlign: TextAlign.center,
+                        style: sinhalaText(
+                          15,
+                          weight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        'Question ${_index + 1} of ${_questions.length}',
+                        style: sinhalaText(
+                          11.5,
+                          color: AppColors.inkSoft,
+                        ),
+                      ),
+                    ],
+                  );
+
+                  final speakerButton =
+                      ValueListenableBuilder<bool>(
+                    valueListenable: widget.tts.speaking,
+                    builder: (context, speaking, _) {
+                      return IconButton.filled(
+                        onPressed: _speakPrompt,
+                        tooltip: 'Read aloud',
+                        style: IconButton.styleFrom(
+                          backgroundColor: speaking
+                              ? AppColors.primary
+                              : AppColors.primarySoft,
+                          foregroundColor: speaking
+                              ? Colors.white
+                              : AppColors.primary,
+                          minimumSize: const Size(48, 48),
+                        ),
+                        icon: const Icon(
+                          Icons.volume_up,
+                          size: 26,
+                        ),
+                      );
+                    },
+                  );
+
+                  if (isCompact) {
+                    return Column(
                       children: [
-                        exitButton,
-                        speakerButton,
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            exitButton,
+                            speakerButton,
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        title,
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    title,
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  exitButton,
-                  Expanded(
-                    child: Center(
-                      child: title,
-                    ),
-                  ),
-                  speakerButton,
-                ],
-              );
-            },
-          ),
-
-          const SizedBox(height: 4),
-
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: (_index + 1) / _questions.length,
-              minHeight: 10,
-              backgroundColor: AppColors.line,
-              valueColor: const AlwaysStoppedAnimation(
-                AppColors.primary,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(
-                color: AppColors.primarySoft,
-                width: 3,
-              ),
-            ),
-            child: Column(
-              children: [
-                MascotOwl(
-                  emotion: _mascot,
-                  size: 72,
-                ),
-
-                const SizedBox(height: 6),
-
-                Text(
-                  _q.promptEnglish,
-                  textAlign: TextAlign.center,
-                  style: sinhalaText(
-                    12,
-                    color: AppColors.inkSoft,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  _promptDisplay(_q),
-                  textAlign: TextAlign.center,
-                  style: sinhalaText(
-                    30,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          LayoutBuilder(
-            builder: (context, box) {
-              const gap = 14.0;
-
-              final side = (
-                (box.maxWidth - gap * (cols - 1)) / cols
-              ).clamp(kMinTap, 170.0).toDouble();
-
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                alignment: WrapAlignment.center,
-                children: _q.choices.map((c) {
-                  var f = TileFeedback.none;
-
-                  if (_feedback != TileFeedback.none) {
-                    if (c.id == _selectedId) {
-                      f = _feedback;
-                    } else if (c.isCorrect &&
-                        _feedback == TileFeedback.incorrect) {
-                      f = TileFeedback.correct;
-                    }
+                    );
                   }
 
-                  return ChoiceTile(
-                    option: c,
-                    size: side,
-                    feedback: f,
-                    onTap: () => _tap(c),
+                  return Row(
+                    children: [
+                      exitButton,
+                      Expanded(
+                        child: Center(child: title),
+                      ),
+                      speakerButton,
+                    ],
                   );
-                }).toList(),
-              );
-            },
+                },
+              ),
+
+              const SizedBox(height: 4),
+
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: (_index + 1) / _questions.length,
+                  minHeight: 10,
+                  backgroundColor: AppColors.line,
+                  valueColor: const AlwaysStoppedAnimation(
+                    AppColors.primary,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(
+                    color: AppColors.primarySoft,
+                    width: 3,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    MascotOwl(
+                      emotion: _mascot,
+                      size: 72,
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      _q.promptEnglish,
+                      textAlign: TextAlign.center,
+                      style: sinhalaText(
+                        12,
+                        color: AppColors.inkSoft,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      _promptDisplay(_q),
+                      textAlign: TextAlign.center,
+                      style: sinhalaText(
+                        30,
+                        weight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              LayoutBuilder(
+                builder: (context, box) {
+                  const gap = 14.0;
+
+                  final side = (
+                    (box.maxWidth - gap * (cols - 1)) / cols
+                  ).clamp(kMinTap, 170.0).toDouble();
+
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    alignment: WrapAlignment.center,
+                    children: _q.choices.map((c) {
+                      var f = TileFeedback.none;
+
+                      if (_feedback != TileFeedback.none) {
+                        if (c.id == _selectedId) {
+                          f = _feedback;
+                        } else if (c.isCorrect &&
+                            _feedback ==
+                                TileFeedback.incorrect) {
+                          f = TileFeedback.correct;
+                        }
+                      }
+
+                      return ChoiceTile(
+                        option: c,
+                        size: side,
+                        feedback: f,
+                        onTap: () => _tap(c),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 14),
+
+              SizedBox(
+                height: 34,
+                child: Text(
+                  _feedback == TileFeedback.correct
+                      ? 'නියමයි! හරි! 🎉'
+                      : _feedback == TileFeedback.incorrect
+                          ? 'කමක් නෑ! නැවත උත්සාහ කරමු! 💛'
+                          : 'අහන්න, උත්තරය තෝරන්න 🦉',
+                  style: sinhalaText(
+                    17,
+                    weight: FontWeight.w900,
+                    color: _feedback == TileFeedback.correct
+                        ? AppColors.strong
+                        : _feedback == TileFeedback.incorrect
+                            ? AppColors.developing
+                            : AppColors.inkSoft,
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
 
-          const SizedBox(height: 14),
+        // Larger celebration overlay. It does not block answer taps.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality:
+                    BlastDirectionality.explosive,
+                shouldLoop: false,
 
-          SizedBox(
-            height: 34,
-            child: Text(
-              _feedback == TileFeedback.correct
-                  ? 'නියමයි! හරි! 🎉'
-                  : _feedback == TileFeedback.incorrect
-                      ? 'කමක් නෑ! නැවත උත්සාහ කරමු! 💛'
-                      : 'අහන්න, උත්තරය තෝරන්න 🦉',
-              style: sinhalaText(
-                17,
-                weight: FontWeight.w900,
-                color: _feedback == TileFeedback.correct
-                    ? AppColors.strong
-                    : _feedback == TileFeedback.incorrect
-                        ? AppColors.developing
-                        : AppColors.inkSoft,
+                numberOfParticles: 65,
+                emissionFrequency: 0.04,
+                gravity: 0.12,
+
+                maxBlastForce: 28,
+                minBlastForce: 12,
+
+                particleDrag: 0.02,
+
+                // Increase the actual particle dimensions.
+                minimumSize: const Size(12, 12),
+                maximumSize: const Size(24, 24),
+
+                createParticlePath: _drawStar,
+
+                colors: const [
+                  Color(0xFFFF5252),
+                  Color(0xFFFFC107),
+                  Color(0xFF4CAF50),
+                  Color(0xFF2196F3),
+                  Color(0xFFE040FB),
+                  Color(0xFFFF80AB),
+                  Color(0xFF00BCD4),
+                  Color(0xFFFF9800),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
