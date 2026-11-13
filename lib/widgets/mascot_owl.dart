@@ -4,183 +4,171 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// Mirrors the web prototype's OllieEmotion values.
+/// Animated Flutter recreation of the React OllieOwl SVG mascot.
 enum OwlEmotion { cheerful, bounce, speaking, encouraging, welcome }
 
 class MascotOwl extends StatefulWidget {
   final OwlEmotion emotion;
   final double size;
   final String? speech;
-
-  const MascotOwl({
-    super.key,
-    this.emotion = OwlEmotion.cheerful,
-    this.size = 110,
-    this.speech,
-  });
+  const MascotOwl({super.key, this.emotion = OwlEmotion.cheerful, this.size = 110, this.speech});
 
   @override
   State<MascotOwl> createState() => _MascotOwlState();
 }
 
-class _MascotOwlState extends State<MascotOwl>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
+class _MascotOwlState extends State<MascotOwl> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: Duration(milliseconds: widget.emotion == OwlEmotion.bounce ? 600 : 1250),
   )..repeat(reverse: true);
 
   @override
   void dispose() {
-    _c.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final owl = AnimatedBuilder(
-      animation: _c,
-      builder: (context, child) {
-        final t = Curves.easeInOut.transform(_c.value);
-        double dy = -3 * t, scale = 1, angle = 0;
-        switch (widget.emotion) {
-          case OwlEmotion.bounce:
-          case OwlEmotion.welcome:
-            dy = -12 * t;
-            scale = 1 + 0.06 * t;
-            break;
-          case OwlEmotion.speaking:
-            scale = 1 + 0.05 * t;
-            break;
-          case OwlEmotion.encouraging:
-            angle = (t - 0.5) * 0.12;
-            break;
-          case OwlEmotion.cheerful:
-            break;
-        }
+    final mascot = AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        final isBouncy = widget.emotion == OwlEmotion.bounce || widget.emotion == OwlEmotion.welcome;
+        final dy = isBouncy ? -10 * t : -3.5 * t;
+        final angle = isBouncy ? math.sin(t * math.pi * 2) * 0.025 : 0.0;
         return Transform.translate(
           offset: Offset(0, dy),
           child: Transform.rotate(
             angle: angle,
-            child: Transform.scale(scale: scale, child: child),
+            child: CustomPaint(
+              size: Size(widget.size, widget.size * 1.1),
+              painter: _OwlPainter(widget.emotion, t),
+            ),
           ),
         );
       },
-      child: CustomPaint(
-        size: Size(widget.size, widget.size),
-        painter: _OwlPainter(widget.emotion),
-      ),
     );
 
-    if (widget.speech == null) return owl;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          constraints: const BoxConstraints(maxWidth: 280),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.primarySoft, width: 2),
-          ),
-          child: Text(
-            widget.speech!,
-            textAlign: TextAlign.center,
-            style: sinhalaText(15, weight: FontWeight.w800),
-          ),
+    if (widget.speech == null) return mascot;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFB923C), width: 1.5),
+          boxShadow: const [BoxShadow(color: Color(0x1A0F172A), blurRadius: 8, offset: Offset(0, 3))],
         ),
-        owl,
-      ],
-    );
+        child: Text(widget.speech!, textAlign: TextAlign.center,
+            style: sinhalaText(13, weight: FontWeight.w800)),
+      ),
+      const SizedBox(height: 5),
+      mascot,
+    ]);
   }
 }
 
 class _OwlPainter extends CustomPainter {
   final OwlEmotion emotion;
-  _OwlPainter(this.emotion);
+  final double phase;
+  _OwlPainter(this.emotion, this.phase);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final s = size.width / 100;
-    Offset p(double x, double y) => Offset(x * s, y * s);
-    final body = Paint()..color = const Color(0xFF8C6A4E);
-    final belly = Paint()..color = const Color(0xFFF4E3C8);
+    final sx = size.width / 200;
+    final sy = size.height / 220;
+    canvas.save();
+    canvas.scale(sx, sy);
+
+    final body = Paint()..shader = const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight,
+      colors: [Color(0xFFF97316), Color(0xFFEA580C)],
+    ).createShader(const Rect.fromLTWH(25, 30, 150, 165));
+    final belly = Paint()..shader = const LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [Color(0xFFFEF08A), Color(0xFFFDE047)],
+    ).createShader(const Rect.fromLTWH(55, 90, 90, 110));
+    final wingPaint = Paint()..color = const Color(0xFFC2410C);
     final white = Paint()..color = Colors.white;
-    final pupil = Paint()..color = const Color(0xFF3D2645);
-    final beak = Paint()..color = const Color(0xFFFFC145);
-    final blush = Paint()..color = const Color(0x55FF8A8A);
+    final eyeFrame = Paint()..color = const Color(0xFF1E3A8A)..style = PaintingStyle.stroke..strokeWidth = 5;
+    final pupil = Paint()..color = const Color(0xFF0F172A);
+    final highlight = Paint()..color = Colors.white;
+    final feather = Paint()..color = const Color(0xFFD97706)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
 
-    canvas.drawOval(
-      Rect.fromCenter(center: p(50, 58), width: 68 * s, height: 64 * s),
-      body,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(center: p(50, 60), width: 48 * s, height: 48 * s),
-      belly,
-    );
+    // Ear tufts and rounded orange body.
+    final tufts = Paint()..color = const Color(0xFFC2410C);
+    final leftTuft = Path()..moveTo(48, 53)..quadraticBezierTo(23, 12, 62, 43)..close();
+    final rightTuft = Path()..moveTo(152, 53)..quadraticBezierTo(177, 12, 138, 43)..close();
+    canvas.drawPath(leftTuft, tufts);
+    canvas.drawPath(rightTuft, tufts);
+    canvas.drawOval(const Rect.fromLTRB(30, 38, 170, 202), body);
 
-    final earL = Path()
-      ..moveTo(24 * s, 32 * s)
-      ..lineTo(34 * s, 10 * s)
-      ..lineTo(42 * s, 34 * s)
-      ..close();
-    final earR = Path()
-      ..moveTo(76 * s, 32 * s)
-      ..lineTo(66 * s, 10 * s)
-      ..lineTo(58 * s, 34 * s)
-      ..close();
-    canvas.drawPath(earL, body);
-    canvas.drawPath(earR, body);
+    // Flapping side wings, matching the React mascot's motion.
+    final flap = (emotion == OwlEmotion.bounce || emotion == OwlEmotion.speaking)
+        ? math.sin(phase * math.pi * 2) * 0.18 : math.sin(phase * math.pi * 2) * 0.045;
+    canvas.save();
+    canvas.translate(31, 121);
+    canvas.rotate(-0.08 - flap);
+    canvas.drawOval(Rect.fromCenter(center: Offset(0, 0), width: 36, height: 76), wingPaint);
+    canvas.restore();
+    canvas.save();
+    canvas.translate(169, 121);
+    canvas.rotate(0.08 + flap);
+    canvas.drawOval(Rect.fromCenter(center: Offset(0, 0), width: 36, height: 76), wingPaint);
+    canvas.restore();
 
-    canvas.drawCircle(p(39, 52), 11 * s, white);
-    canvas.drawCircle(p(61, 52), 11 * s, white);
-    canvas.drawCircle(p(39, 53), 5.5 * s, pupil);
-    canvas.drawCircle(p(61, 53), 5.5 * s, pupil);
-    canvas.drawCircle(p(41, 50), 2 * s, white);
-    canvas.drawCircle(p(63, 50), 2 * s, white);
+    // Yellow belly and feather lines.
+    canvas.drawOval(const Rect.fromLTRB(55, 91, 145, 193), belly);
+    final feathers = Path()
+      ..moveTo(82, 125)..quadraticBezierTo(100, 137, 118, 125)
+      ..moveTo(78, 148)..quadraticBezierTo(100, 160, 122, 148)
+      ..moveTo(89, 170)..quadraticBezierTo(100, 177, 111, 170);
+    canvas.drawPath(feathers, feather);
+    final feet = Paint()..color = const Color(0xFFF59E0B);
+    canvas.drawOval(const Rect.fromLTRB(72, 190, 100, 207), feet);
+    canvas.drawOval(const Rect.fromLTRB(100, 190, 128, 207), feet);
 
-    canvas.drawOval(
-      Rect.fromCenter(center: p(28, 66), width: 10 * s, height: 6 * s),
-      blush,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(center: p(72, 66), width: 10 * s, height: 6 * s),
-      blush,
-    );
-
-    final beakPath = Path()
-      ..moveTo(47 * s, 63 * s)
-      ..lineTo(53 * s, 63 * s)
-      ..lineTo(50 * s, 71 * s)
-      ..close();
-    canvas.drawPath(beakPath, beak);
-
+    // Large eyes, blue glasses and bright pupils.
+    canvas.drawCircle(const Offset(65, 80), 30, white);
+    canvas.drawCircle(const Offset(135, 80), 30, white);
     if (emotion == OwlEmotion.encouraging) {
-      final brow = Paint()
-        ..color = const Color(0xFF3D2645)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * s
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(p(31, 38), p(45, 41), brow);
-      canvas.drawLine(p(69, 38), p(55, 41), brow);
+      final closed = Paint()..color = const Color(0xFF0F172A)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+      canvas.drawArc(Rect.fromCenter(center: const Offset(65, 82), width: 30, height: 15), math.pi, math.pi, false, closed);
+      canvas.drawArc(Rect.fromCenter(center: const Offset(135, 82), width: 30, height: 15), math.pi, math.pi, false, closed);
+    } else {
+      canvas.drawCircle(const Offset(65, 80), 14, pupil);
+      canvas.drawCircle(const Offset(135, 80), 14, pupil);
+      canvas.drawCircle(const Offset(60, 75), 5, highlight);
+      canvas.drawCircle(const Offset(130, 75), 5, highlight);
     }
-    if (emotion == OwlEmotion.bounce || emotion == OwlEmotion.welcome) {
-      final smile = Paint()
-        ..color = const Color(0xFF3D2645)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8 * s
-        ..strokeCap = StrokeCap.round;
-      canvas.drawArc(
-        Rect.fromCenter(center: p(50, 74), width: 14 * s, height: 8 * s),
-        0.1,
-        math.pi - 0.2,
-        false,
-        smile,
-      );
+    final glass = Paint()..color = const Color(0x553B82F6)..style = PaintingStyle.fill;
+    canvas.drawCircle(const Offset(65, 80), 32, glass);
+    canvas.drawCircle(const Offset(135, 80), 32, glass);
+    canvas.drawCircle(const Offset(65, 80), 32, eyeFrame);
+    canvas.drawCircle(const Offset(135, 80), 32, eyeFrame);
+    final bridge = Paint()..color = const Color(0xFF1E3A8A)..strokeWidth = 5..strokeCap = StrokeCap.round;
+    canvas.drawLine(const Offset(97, 80), const Offset(103, 80), bridge);
+
+    // Beak, cheeks and small smile.
+    final beak = Path()..moveTo(92, 96)..lineTo(108, 96)..lineTo(100, 113)..close();
+    canvas.drawPath(beak, Paint()..color = const Color(0xFFF59E0B));
+    final cheek = Paint()..color = const Color(0x66F43F5E);
+    canvas.drawOval(Rect.fromCenter(center: const Offset(45, 96), width: 17, height: 10), cheek);
+    canvas.drawOval(Rect.fromCenter(center: const Offset(155, 96), width: 17, height: 10), cheek);
+    final smile = Paint()..color = const Color(0xFFB45309)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    canvas.drawArc(Rect.fromCenter(center: const Offset(100, 139), width: 34, height: 20), 0.2, math.pi - 0.4, false, smile);
+
+    if (emotion == OwlEmotion.bounce) {
+      final star = Paint()..color = const Color(0xFFEAB308);
+      canvas.drawCircle(const Offset(20, 55), 5, star);
+      canvas.drawCircle(const Offset(180, 55), 5, star);
     }
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _OwlPainter old) => old.emotion != emotion;
+  bool shouldRepaint(covariant _OwlPainter old) => old.emotion != emotion || old.phase != phase;
 }

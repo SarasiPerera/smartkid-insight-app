@@ -117,11 +117,13 @@ void _startSession([ChildProfile? child]) {
     final s = _session;
     if (s == null) return;
     final done = {...s.completedActivities, _activity}.toList();
+    final updated = s.copyWith(completedActivities: done);
     setState(() {
-      _session = s.copyWith(completedActivities: done);
+      _session = updated;
       // A rest break after the second finished activity (same as the web app).
       _screen = done.length == 2 ? AppScreen.restBreak : AppScreen.activityMenu;
     });
+    _fs.saveSession(updated);
   }
 
   void _finishSession() {
@@ -147,35 +149,21 @@ void _startSession([ChildProfile? child]) {
     final showNav = _screen == AppScreen.home || _screen == AppScreen.dashboard;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'SmartKid Insight',
-          style: sinhalaText(17, weight: FontWeight.w900),
-        ),
+        toolbarHeight: 68,
+        titleSpacing: 16,
+        title: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 40, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)), child: const Center(child: Text('🦉', style: TextStyle(fontSize: 23)))),
+          const SizedBox(width: 10),
+          Flexible(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            RichText(text: TextSpan(style: sinhalaText(17, weight: FontWeight.w900), children: const [TextSpan(text: 'SmartKid '), TextSpan(text: 'Insight', style: TextStyle(color: Color(0xFFEA580C)))])),
+            Text('Sinhala Early Childhood Screening', style: sinhalaText(9.5, color: AppColors.inkSoft)),
+          ])),
+        ]),
         actions: [
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: Text(
-                widget.user.role.name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await LocalStore.clearCurrentChild();
-              await widget.auth.signOut();
-            },
-          ),
+          if (MediaQuery.sizeOf(context).width >= 620 && (_screen == AppScreen.home || _screen == AppScreen.dashboard)) Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Container(padding: const EdgeInsets.symmetric(horizontal: 10), decoration: BoxDecoration(color: const Color(0xFFECFDF5), border: Border.all(color: const Color(0xFFA7F3D0)), borderRadius: BorderRadius.circular(30)), child: Row(children: [const Icon(Icons.volume_up, size: 14, color: Color(0xFF059669)), const SizedBox(width: 4), Text('Audio Active', style: sinhalaText(9.5, color: const Color(0xFF047857), weight: FontWeight.w900))]))),
+          if (MediaQuery.sizeOf(context).width >= 430 && (_screen == AppScreen.home || _screen == AppScreen.dashboard)) Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(30)), child: Text('${widget.user.role.name.toUpperCase()} MODE', style: sinhalaText(9, color: const Color(0xFF1D4ED8), weight: FontWeight.w900)))),
+          IconButton(tooltip: 'Sign out', icon: const Icon(Icons.logout), onPressed: () async { await LocalStore.clearCurrentChild(); await widget.auth.signOut(); }),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(child: _body()),
@@ -225,6 +213,11 @@ void _startSession([ChildProfile? child]) {
           onCreateChild: () =>
               setState(() => _screen = AppScreen.profileCreate),
           onStartSession: () => _startSession(),
+          onNavigate: (screen) => setState(() {
+            _screen = screen == 'dashboard'
+                ? AppScreen.dashboard
+                : AppScreen.welcome;
+          }),
         );
       case AppScreen.profileCreate:
         return ProfileCreateScreen(
